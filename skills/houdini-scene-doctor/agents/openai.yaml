@@ -1,0 +1,4 @@
+interface:
+  display_name: "Houdini Scene Doctor"
+  short_description: "Inspect Houdini scene state without edits or cooks"
+  default_prompt: "Use $houdini-scene-doctor to inspect a Houdini subtree without edits."

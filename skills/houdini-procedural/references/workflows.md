@@ -5,10 +5,11 @@ This guide is self-contained so the skill remains useful when copied outside its
 ## Shared workflow
 
 1. Call `connection_status`; for GUI, verify the current hip path before edits. Use `reconnect` only when the GUI link is down.
-2. In batch, provide the same `hip_input` to each call because each request starts a fresh hython process. Include a distinct `hip_output` on the mutation call whose result should persist. Do not assume mutation state carries over across calls.
-3. Inspect parent contents with `node_list`, discover valid child operators with `node_types`, and inspect node parameter tuples with `node_inspect` before edits.
-4. Cook the output and inspect errors, warnings, and messages. If a request times out or returns a partial-change note, inspect current state before another mutation.
-5. Save only to the requested path. `scene_load` in GUI can discard unsaved work only with explicit `discard_changes: true`; existing save targets need `overwrite: true`.
+2. In batch, use the original `hip_input` for independent branches; after a mutation with `hip_output`, pass that returned output path as the next call's `hip_input`. Each request starts a fresh hython process.
+3. When tuning an existing graph, inspect the target node's parameters and input connections first, capture relevant before state, and modify only requested fields. Preserve existing node identities and wiring unless a topology change was requested.
+4. Inspect parent contents with `node_list`, discover valid child operators with `node_types`, and inspect node parameter tuples with `node_inspect` before creating new nodes or setting parameters.
+5. Cook the output and inspect errors, warnings, and messages. If a request times out or returns a partial-change note, inspect current state before another mutation. Report changed parameters and wiring as after-state.
+6. Save only to the requested path. `scene_load` in GUI can discard unsaved work only with explicit `discard_changes: true`; existing save targets need `overwrite: true`.
 
 ## SOP network example
 

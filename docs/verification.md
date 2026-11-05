@@ -33,4 +33,32 @@ Skill の SOP / VEX / HDA 作例も一時的な Houdini 設定・出力先で実
 
 GUI のタイムアウトは Houdini 内の処理を取り消しません。失敗やタイムアウト後は部分的な変更の可能性があるため、状態を確認してから次の操作を行います。複数の変更を一括してロールバックするトランザクションは提供していません。
 
-クライアントの MCP 設定やグローバル Skill 配置は変更していません。利用開始には [README](../README.md) の接続・配置手順を使用してください。
+初回検証時にはクライアント設定の変更は行いませんでした。追加整備後のプロジェクト内配置については以下を参照してください。
+
+## 追加 Skill とクライアント連携の検証
+
+同日、次の5つを追加し、既存の `houdini-procedural` と合わせて6つの Skill にしました。
+
+- `houdini-scene-doctor`: cook しない構造・式・既存診断の取得。ノード数とパラメータ数に上限。
+- `houdini-vex-workbench`: VEX の制作、属性の型とクラスの検証。
+- `houdini-hda-publisher`: 新規 HDA の作成、元ノード型の維持、出力先・型名の衝突防止。
+- `houdini-cop-workbench`: Copernicus と旧 COP2 の区別、COP の作成と既存 Blur の調整。
+- `houdini-iterate`: ノードの未評価スナップショット、変更前後の比較、判断と検証結果の JSONL 記録。
+
+追加後の全テストは **25 passed in 44.55s**。Houdini を起動するテストは、一時的なユーザー設定フォルダーを使い、テスト用 subprocess のみ package・ユーザー env の読み込みを無効化しています。製品バックエンドの起動環境は変更していません。
+
+追加の実機確認結果:
+
+- 既存 box → wrangle → OUT の wrangle だけを調整し、ノードの session ID と接続を維持。8点・6プリミティブ、変化のある point `pscale` / `Cd`、エラー・警告なし。
+- Copernicus `copnet` の `constant` → `blur` を64×64で検証。1チャンネル、Rawレイヤー、エラー・警告なし。既存 Blur の `size` を 0.005 から 0.002 へ変更し、入力接続を維持。
+- スナップショットは `1 / 0` の式、アニメーションキー、`$HIP` とバッククォートを含む文字列を未評価で取得し、cook 回数は不変。
+- ジャーナルは Unicode の追記・順序を維持し、不完全な行への追記、相対パス、不正な JSON 定数、過大な記録を拒否。
+- 6つすべての Skill が形式検証に成功。
+
+`setup_clients.py` の dry run と一時プロジェクトでの適用、設定保持、再実行、衝突時の事前拒否をテストしました。その後、このローカル作業コピーへ Batch / `--allow-python` のプロジェクト設定を適用しています。
+
+- Codex `0.166.0-alpha.5.1`: `codex mcp get houdini --json` で設定と `enabled=true` を確認。
+- Claude Code `2.1.316`: `claude mcp get houdini` が Project config として認識。初回の利用承認は Pending approval。
+- 同じ設定で再度 dry run すると、書き込み予定・コピー予定とも空。
+
+生成した `.codex/config.toml`、`.mcp.json`、`.agents/skills/`、`.claude/skills/` はローカル用途で Git 管理対象外です。ユーザー全体の設定は変更していません。クライアント内の実際の AI 会話による操作、Houdini GUI の実機操作、他のバージョンや OS は未検証です。[クライアント導入手順](clients.md) を参照してください。

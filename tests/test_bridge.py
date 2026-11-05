@@ -10,6 +10,15 @@ from houdini_mcp.bridge import Bridge
 HYTHON = os.environ.get("HOUDINI_MCP_TEST_HYTHON", r"C:\Program Files\Side Effects Software\Houdini 22.0.368\bin\hython.exe")
 
 
+@pytest.fixture(autouse=True)
+def isolate_houdini_environment(monkeypatch, tmp_path):
+    """Keep spawned hython processes out of the user's packages and preferences."""
+    monkeypatch.setenv("HOUDINI_PACKAGE_SKIP", "1")
+    monkeypatch.setenv("HOUDINI_NO_ENV_FILE", "1")
+    monkeypatch.setenv("HOUDINI_USER_PREF_DIR", str(tmp_path / "prefs__HVER__"))
+    monkeypatch.delenv("HOUDINI_PATH", raising=False)
+
+
 def test_python_is_opt_in():
     result = Bridge("batch").call("execute_python", {"code": "pass"})
     assert result["error"]["type"] == "PermissionError"

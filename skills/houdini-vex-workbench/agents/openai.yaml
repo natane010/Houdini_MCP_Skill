@@ -1,0 +1,4 @@
+interface:
+  display_name: "Houdini VEX Workbench"
+  short_description: "Write and debug VEX with attribute checks"
+  default_prompt: "Use $houdini-vex-workbench to write or debug a SOP wrangle."

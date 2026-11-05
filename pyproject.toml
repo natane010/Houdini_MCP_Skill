@@ -7,7 +7,7 @@ name = "houdini-mcp-bridge"
 version = "0.1.0"
 description = "Local stdio MCP bridge for Houdini"
 requires-python = ">=3.10"
-dependencies = ["mcp>=1.21.1,<2", "rpyc==4.1.0"]
+dependencies = ["mcp>=1.21.1,<2", "rpyc==4.1.0", "tomli>=2; python_version < '3.11'"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]

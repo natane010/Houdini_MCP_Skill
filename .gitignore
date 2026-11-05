@@ -5,3 +5,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+.codex/config.toml
+.mcp.json
+.agents/skills/
+.claude/skills/

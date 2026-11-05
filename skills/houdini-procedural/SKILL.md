@@ -11,6 +11,7 @@ Use this skill when a task asks you to create or modify Houdini nodes, inspect a
 
 - Read [references/workflows.md](references/workflows.md) for concrete SOP, VEX, geometry inspection, and HDA procedures. The repository's `docs/usage.md` is an optional fuller reference when this skill is used from its source checkout.
 - Check connection and scene state before making changes. Inspect existing nodes before choosing paths or names.
+- When the task is to tune an existing node, record its current parameters and input connections first. Make the smallest requested change and preserve network topology unless rebuilding it was requested; summarize the before/after values and wiring.
 - Build networks in a dedicated, non-conflicting container. Validate node types and parameter names with `node_inspect` before setting parameters.
 - Cook the smallest relevant node, inspect errors and warnings, and verify resulting state before reporting completion.
 - Treat `execute_python` as arbitrary code execution. It requires the bridge's `--allow-python` option and is not sandboxed; use it only when the requested work needs HOM/Python and the option is enabled.

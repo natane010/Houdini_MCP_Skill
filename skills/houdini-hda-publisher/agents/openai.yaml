@@ -1,0 +1,4 @@
+interface:
+  display_name: "Houdini HDA Publisher"
+  short_description: "Publish selected networks as new HDA files"
+  default_prompt: "Use $houdini-hda-publisher to publish a selected network as a new HDA."
