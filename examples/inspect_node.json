@@ -1,0 +1,6 @@
+{
+  "op": "node_inspect",
+  "args": {
+    "path": "/obj/geo1/attribwrangle1"
+  }
+}

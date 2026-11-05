@@ -1,0 +1,6 @@
+{
+  "op": "node_cook",
+  "args": {
+    "path": "/obj/geo1/attribwrangle1"
+  }
+}

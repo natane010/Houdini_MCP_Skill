@@ -1,0 +1,9 @@
+{
+  "op": "node_set_parms",
+  "args": {
+    "path": "/obj/geo1/attribwrangle1",
+    "values": {
+      "snippet": "@pscale = 0.1;"
+    }
+  }
+}

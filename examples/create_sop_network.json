@@ -1,0 +1,10 @@
+{
+  "hip_input": "C:/work/source.hip",
+  "hip_output": "C:/work/source_edited.hip",
+  "op": "node_create",
+  "args": {
+    "parent": "/obj",
+    "type_name": "geo",
+    "name": "mcp_geo"
+  }
+}
