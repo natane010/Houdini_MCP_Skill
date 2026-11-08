@@ -95,6 +95,8 @@ def test_real_hython_roundtrip(tmp_path):
     assert protected["error"]["type"] == "FileExistsError"
     py = b.call("execute_python", {"code": "print('hello'); result = hou.node('/obj/mcp_test').parmTuple('t').eval()"}, hip_input=changed["hip_output"])
     assert py["ok"] and py["stdout"].strip() == "hello" and "1.0, 2.0, 3.0" in py["result"]["value"]
+    changed_argv = b.call("execute_python", {"code": "import sys; sys.argv[:] = []; result = 'ok'"}, hip_input=changed["hip_output"])
+    assert changed_argv["ok"] and changed_argv["result"]["value"] == "'ok'"
     bad = b.call("node_inspect", {"path": "/obj/nonexistent"}, hip_input=first)
     assert bad["error"]["type"] == "ValueError"
 

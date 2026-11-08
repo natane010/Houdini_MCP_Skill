@@ -3,8 +3,10 @@ import json
 import sys
 from dispatcher import batch
 
-with open(sys.argv[1], encoding="utf-8") as stream:
+# Render commands may replace sys.argv while processing the request.
+request_path, response_path = sys.argv[1:3]
+with open(request_path, encoding="utf-8") as stream:
     payload = json.load(stream)
 result = batch(payload)
-with open(sys.argv[2], "w", encoding="utf-8") as stream:
+with open(response_path, "w", encoding="utf-8") as stream:
     json.dump(result, stream, ensure_ascii=False, default=str)
