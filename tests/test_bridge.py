@@ -141,6 +141,7 @@ def test_batch_worker_failure_reads_tail(monkeypatch, tmp_path):
     executable = tmp_path / "hython.exe"
     executable.touch()
     def fail(*args, **kwargs):
+        assert kwargs["stdin"] == subprocess.DEVNULL
         kwargs["stderr"].write(b"a" * 9000 + b"tail")
         kwargs["stderr"].flush()
         return SimpleNamespace(returncode=7)

@@ -76,7 +76,14 @@ class Bridge:
                 request.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
                 log = Path(temp) / "worker.log"
                 with log.open("wb") as output_stream:
-                    proc = subprocess.run([self.hython, str(HERE / "worker.py"), str(request), str(response)], stdout=subprocess.DEVNULL, stderr=output_stream, timeout=self.timeout)
+                    # Do not let hython consume or wait on the MCP server's stdin.
+                    proc = subprocess.run(
+                        [self.hython, str(HERE / "worker.py"), str(request), str(response)],
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.DEVNULL,
+                        stderr=output_stream,
+                        timeout=self.timeout,
+                    )
                 if not response.exists():
                     with log.open("rb") as stream:
                         stream.seek(0, os.SEEK_END)
