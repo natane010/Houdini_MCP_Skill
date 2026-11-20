@@ -16,7 +16,8 @@ test = ["pytest>=8"]
 houdini-mcp = "houdini_mcp.server:main"
 
 [tool.setuptools]
-packages = ["houdini_mcp", "houdini_mcp.skill_helpers", "houdini_mcp.hda_helpers"]
+packages = ["houdini_mcp", "houdini_mcp.hda_helpers"]
+py-modules = ["houdini_mcp.skill_helpers.node_snapshot"]
 
 [tool.setuptools.package-dir]
 houdini_mcp = "src/houdini_mcp"
