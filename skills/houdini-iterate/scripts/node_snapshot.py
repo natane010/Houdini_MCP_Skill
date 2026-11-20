@@ -30,6 +30,11 @@ def snapshot_node(path, parm_names=None, max_parms=200):
               'inputs': [wire(c) for c in node.inputConnections()],
               'outputs': [wire(c) for c in node.outputConnections()],
               'parms': [], 'missing_parms': [], 'truncated': False}
+    report['flags'] = {}
+    for flag, name in (('display', 'isDisplayFlagSet'), ('render', 'isRenderFlagSet')):
+        read_flag = getattr(node, name, None)
+        if read_flag is not None:
+            report['flags'][flag] = read_flag()
     selected = []
     seen = set()
     if parm_names is None:

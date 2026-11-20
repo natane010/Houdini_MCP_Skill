@@ -7,7 +7,7 @@ name = "houdini-mcp-bridge"
 version = "0.1.0"
 description = "Local stdio MCP bridge for Houdini"
 requires-python = ">=3.10"
-dependencies = ["mcp>=1.21.1,<2", "rpyc==4.1.0", "tomli>=2; python_version < '3.11'"]
+dependencies = ["mcp>=1.21.1,<2", "tomli>=2; python_version < '3.11'"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
@@ -15,5 +15,10 @@ test = ["pytest>=8"]
 [project.scripts]
 houdini-mcp = "houdini_mcp.server:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["houdini_mcp", "houdini_mcp.skill_helpers", "houdini_mcp.hda_helpers"]
+
+[tool.setuptools.package-dir]
+houdini_mcp = "src/houdini_mcp"
+"houdini_mcp.skill_helpers" = "skills/houdini-iterate/scripts"
+"houdini_mcp.hda_helpers" = "skills/houdini-hda-publisher/scripts"

@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import sys
 import tempfile
 
@@ -18,13 +19,28 @@ except ImportError:
 REPO_SKILLS = Path(__file__).resolve().parents[1] / 'skills'
 
 
+def _is_link(path):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return False
+    return stat.S_ISLNK(info.st_mode) or (
+        os.name == 'nt' and info.st_reparse_tag == stat.IO_REPARSE_TAG_MOUNT_POINT
+    )
+
+
+def _check_directory(path):
+    if _is_link(path) or (path.exists() and not path.is_dir()):
+        raise ValueError('Target parent must be a normal directory: ' + str(path))
+
+
 def _files(directory):
     result = {}
     for path in directory.rglob('*'):
         if any(part == '__pycache__' for part in path.relative_to(directory).parts) or path.suffix in ('.pyc', '.pyo'):
             continue
-        if path.is_symlink():
-            raise ValueError('Symbolic links are not supported in skill folders: ' + str(path))
+        if _is_link(path):
+            raise ValueError('Links and junctions are not supported in skill folders: ' + str(path))
         if path.is_file():
             result[path.relative_to(directory).as_posix()] = path.read_bytes()
     return result
@@ -36,20 +52,30 @@ def _toml_parse(text):
     return tomllib.loads(text)
 
 
-def plan(project_dir, client, backend, python, hython=None, allow_python=False):
+def plan(project_dir, client, backend, python, hython=None, allow_python=False, *, port=18811, gui_token_file=None):
     project = Path(project_dir)
     if not project.is_absolute() or not project.is_dir():
         raise ValueError('project-dir must be an existing absolute directory')
+    _check_directory(project)
     executable = Path(python)
     if not executable.is_absolute() or not executable.is_file():
         raise ValueError('python must be an existing absolute executable path')
     if client not in ('both', 'codex', 'claude') or backend not in ('gui', 'batch'):
         raise ValueError('invalid client or backend')
+    if not isinstance(port, int) or not 1 <= port <= 65535:
+        raise ValueError('port must be in [1, 65535]')
+    if gui_token_file is not None and (backend != 'gui' or not Path(gui_token_file).is_absolute()):
+        raise ValueError('gui-token-file requires the GUI backend and an absolute path')
     args = ['-m', 'houdini_mcp.server', '--backend', backend]
     if backend == 'batch':
         if not hython or not Path(hython).is_absolute() or not Path(hython).is_file():
             raise ValueError('batch backend requires an existing absolute hython path')
         args += ['--hython', str(hython)]
+    else:
+        if port != 18811:
+            args += ['--port', str(port)]
+        if gui_token_file is not None:
+            args += ['--gui-token-file', str(gui_token_file)]
     if allow_python:
         args.append('--allow-python')
     server = {'command': str(executable), 'args': args}
@@ -59,7 +85,8 @@ def plan(project_dir, client, backend, python, hython=None, allow_python=False):
     clients = ('codex', 'claude') if client == 'both' else (client,)
     for selected in clients:
         config = project / ('.codex/config.toml' if selected == 'codex' else '.mcp.json')
-        if config.is_symlink() or (config.exists() and not config.is_file()):
+        _check_directory(config.parent)
+        if _is_link(config) or (config.exists() and not config.is_file()):
             raise ValueError('Config target must be a regular file: ' + str(config))
         original = config.read_text(encoding='utf-8-sig') if config.exists() else ''
         if selected == 'codex':
@@ -97,13 +124,15 @@ def plan(project_dir, client, backend, python, hython=None, allow_python=False):
                 servers['houdini'] = claude_server
                 writes.append((config, json.dumps(data, ensure_ascii=False, indent=2) + '\n'))
         destination = project / ('.agents/skills' if selected == 'codex' else '.claude/skills')
+        _check_directory(destination.parent)
+        _check_directory(destination)
         for source in sorted(REPO_SKILLS.iterdir()):
             if not source.is_dir() or not (source / 'SKILL.md').is_file():
                 continue
-            if source.is_symlink():
-                raise ValueError('Symlink skill source is not supported: ' + str(source))
+            if _is_link(source):
+                raise ValueError('Linked skill source is not supported: ' + str(source))
             target = destination / source.name
-            if target.is_symlink() or (target.exists() and not target.is_dir()):
+            if _is_link(target) or (target.exists() and not target.is_dir()):
                 raise ValueError('Skill target must be a directory: ' + str(target))
             if target.exists():
                 if _files(source) != _files(target):
@@ -112,12 +141,6 @@ def plan(project_dir, client, backend, python, hython=None, allow_python=False):
             else:
                 _files(source)  # validate the complete source before any writes
                 copies.append((source, target))
-    for path, _ in writes + copies:
-        for parent in path.parents:
-            if parent == project.parent:
-                break
-            if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
-                raise ValueError('Target parent must be a normal directory: ' + str(parent))
     return {'project_dir': str(project), 'client': client, 'backend': backend,
             'server': server, 'write_configs': [str(p) for p, _ in writes],
             'copy_skills': [{'source': str(a), 'destination': str(b)} for a, b in copies],
@@ -137,8 +160,10 @@ def _atomic_write(path, content):
             temp.unlink()
 
 
-def setup(project_dir, client='both', backend='batch', python=sys.executable, hython=None, allow_python=False, apply=False):
-    report, writes, copies = plan(project_dir, client, backend, python, hython, allow_python)
+def setup(project_dir, client='both', backend='batch', python=sys.executable, hython=None, allow_python=False, apply=False,
+          *, port=18811, gui_token_file=None):
+    report, writes, copies = plan(project_dir, client, backend, python, hython, allow_python,
+                                 port=port, gui_token_file=gui_token_file)
     report['applied'] = bool(apply)
     if apply:
         # Individual writes are atomic; the entire set is not a transaction.
@@ -156,12 +181,16 @@ def main():
     parser.add_argument('--client', choices=('both', 'codex', 'claude'), default='both')
     parser.add_argument('--backend', choices=('batch', 'gui'), default='batch')
     parser.add_argument('--hython')
+    parser.add_argument('--port', type=int, default=18811)
+    parser.add_argument('--gui-token-file')
     parser.add_argument('--python', default=sys.executable)
     parser.add_argument('--allow-python', action='store_true')
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args()
     try:
-        print(json.dumps({'ok': True, **setup(args.project_dir, args.client, args.backend, args.python, args.hython, args.allow_python, args.apply)}, ensure_ascii=False, indent=2))
+        report = setup(args.project_dir, args.client, args.backend, args.python, args.hython,
+                       args.allow_python, args.apply, port=args.port, gui_token_file=args.gui_token_file)
+        print(json.dumps({'ok': True, **report}, ensure_ascii=False, indent=2))
     except Exception as exc:
         print(json.dumps({'ok': False, 'error': {'type': type(exc).__name__, 'message': str(exc)}}, ensure_ascii=False))
         raise SystemExit(1)

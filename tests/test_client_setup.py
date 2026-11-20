@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import sys
 
 import pytest
@@ -22,6 +23,13 @@ def test_dry_run_no_writes_and_no_python_opt_in(tmp_path):
     assert '--allow-python' not in report['server']['args']
     assert list(tmp_path.iterdir()) == []
     assert len(report['copy_skills']) >= 2
+
+
+def test_custom_gui_settings_include_port_and_token_path(tmp_path):
+    token = tmp_path / 'houdini.token'
+    report = module.setup(str(tmp_path), backend='gui', port=18812, gui_token_file=str(token))
+    assert report['server']['args'][-4:] == ['--port', '18812', '--gui-token-file', str(token)]
+    assert not token.exists()
 
 
 def test_apply_both_preserves_other_entries_and_is_idempotent(tmp_path):
@@ -71,3 +79,19 @@ def test_different_skill_rejected_before_configs(tmp_path):
     with pytest.raises(ValueError, match='different contents'):
         module.setup(str(tmp_path), backend='gui', apply=True)
     assert not (tmp_path / '.codex').exists() and not (tmp_path / '.mcp.json').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'win32', reason='Windows directory junction')
+def test_junction_parent_cannot_redirect_writes(tmp_path):
+    project = tmp_path / 'project'
+    outside = tmp_path / 'outside'
+    project.mkdir()
+    outside.mkdir()
+    subprocess.run(['cmd.exe', '/d', '/c', 'mklink', '/J', str(project / '.codex'), str(outside)],
+                   check=True, capture_output=True)
+
+    with pytest.raises(ValueError, match='normal directory'):
+        module.setup(str(project), backend='gui', apply=True)
+
+    assert list(outside.iterdir()) == []
+    assert not (project / '.mcp.json').exists()

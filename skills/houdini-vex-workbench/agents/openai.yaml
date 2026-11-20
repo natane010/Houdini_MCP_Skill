@@ -1,4 +1,4 @@
 interface:
   display_name: "Houdini VEX Workbench"
-  short_description: "Write and debug VEX with attribute checks"
-  default_prompt: "Use $houdini-vex-workbench to write or debug a SOP wrangle."
+  short_description: "Inspect existing VEX and find standard node replacements"
+  default_prompt: "Use $houdini-vex-workbench to inspect the existing VEX node and identify standard operator replacements."

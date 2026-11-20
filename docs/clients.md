@@ -6,6 +6,7 @@
 
 ```powershell
 py -m venv .venv
+.venv\Scripts\python.exe -m pip install --upgrade pip
 .venv\Scripts\python.exe -m pip install -e .
 ```
 
@@ -25,7 +26,7 @@ py -m venv .venv
 
 `--apply` を付けない限り、このコマンドは JSON の計画を表示するだけです。適用すると、選択したプロジェクト内に Codex 用 `.codex/config.toml` と `.agents/skills/`、Claude Code 用 `.mcp.json` と `.claude/skills/` を作成します。ユーザー全体の MCP 設定やホームディレクトリのスキルは変更しません。適用は明示的に実行してください。
 
-Codex だけ、または Claude Code だけに行う場合は `--client codex` または `--client claude` を指定します。スクリプトは既存設定を読み、同名の `houdini` サーバーやスキルが異なる内容なら競合として拒否します。同じ設定は再実行できます。すべての競合確認を先に行いますが、適用中の複数ファイル更新は一括トランザクションではありません。
+Codex だけ、または Claude Code だけに行う場合は `--client codex` または `--client claude` を指定します。スクリプトは既存設定を読み、同名の `houdini` サーバーやスキルが異なる内容なら競合として拒否します。設定・スキルの配置先には通常のディレクトリを使ってください。シンボリックリンクと Windows のジャンクションは拒否します。同じ設定は再実行できます。すべての競合確認を先に行いますが、適用中の複数ファイル更新は一括トランザクションではありません。
 
 設定を適用する場合の実行例:
 
@@ -39,17 +40,23 @@ Codex だけ、または Claude Code だけに行う場合は `--client codex` �
   --apply
 ```
 
-`--allow-python` は `execute_python` ツールを有効にします。任意 Python コードの隔離を行うものではないため、Python 実行が必要なワークフローでだけ指定します。省略した場合、このツールは無効です。MCP サーバーの仮想環境にはプロジェクトを editable install しておきます。
+`--allow-python` を指定すると、ツール一覧に `execute_python` が追加され、Houdini の権限で Python を実行できます。Python 実行が必要なワークフローで指定してください。MCP サーバーの仮想環境にはプロジェクトを editable install しておきます。
 
 ### GUI バックエンド
 
-Houdini GUI に接続する場合は `--backend gui` にします。この場合 `--hython` は不要で、ポートは既定の `18811` です。先に Houdini の Python Shell でループバック bootstrap を起動します。
+Houdini GUI に接続する場合は `--backend gui` を指定します。既定ポートは `18811` です。先に Houdini の Python Shell で bootstrap を起動します。
 
 ```python
-exec(open(r"E:\Projects\HoudiniMCP\scripts\start_gui_loopback.py", encoding="utf-8").read())
+import runpy
+gui = runpy.run_path(r"E:\Projects\HoudiniMCP\scripts\start_gui_loopback.py")
+houdini_mcp_gui = gui["start_server"]()
 ```
 
-未設定のプロジェクトでは、dry run または適用時のコマンドから `--backend batch --hython ...` を `--backend gui` に置き換えます。既に Batch を設定済みの場合、スクリプトは異なる設定として拒否します。切り替えるときは、各設定ファイルの `houdini` エントリの `args` 内で `--backend` の値を `gui` に変更し、`--hython` とそのパスを取り除いてからクライアントを再接続してください。他のサーバー設定は維持します。GUI の RPC 接続は認証なしのローカル接続です。外部ネットワークへ公開しないでください。
+既定ではユーザーのホームにある `.houdini-mcp/gui-18811.token` が初回に作成されます。MCP も同じファイルを読み取ります。複数の Houdini を開く場合は、Houdini 側の `start_server(port=18812)` と MCP 側の `--port 18812` を揃えます。明示的にトークンを置く場合は Houdini 側の `token_file` と MCP 側の `--gui-token-file` に同じ絶対パスを指定してください。ユーザー専用のフォルダーを利用します。起動時に接続できた場合、MCP のログに `hip_file`、`unsaved_changes`、`session_id` が出ます。同じ項目は `reconnect` または `connection_status` でも確認できます。Houdini 内で停止する場合は `houdini_mcp_gui.stop()` を実行します。
+
+設定前のプロジェクトでは、導入コマンドの `--backend batch --hython ...` を `--backend gui` に置き換えます。既存設定を切り替える場合は、クライアント設定の `houdini` エントリで `--backend` を `gui` にし、`--hython` と実行ファイルのパスを削除してからクライアントを再接続します。`--port` と `--gui-token-file` は `setup_clients.py` にも渡せます。
+
+旧 bootstrap を読み込んだ Houdini は再起動してから新しい手順を使います。GUI で `execute_python` を使う場合に限り、Houdini 側の `start_server(allow_python=True)` と MCP 側の `--allow-python` を両方指定します。
 
 ## Codex 設定
 

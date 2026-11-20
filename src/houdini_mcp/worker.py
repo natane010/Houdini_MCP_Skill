@@ -1,7 +1,11 @@
 """Hython entry point. Files, not stdout, carry the protocol."""
 import json
+from pathlib import Path
 import sys
-from dispatcher import batch
+
+if not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from houdini_mcp.dispatcher import batch
 
 # Render commands may replace sys.argv while processing the request.
 request_path, response_path = sys.argv[1:3]

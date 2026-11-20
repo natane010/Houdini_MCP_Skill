@@ -2,20 +2,22 @@
 
 ## Houdini scene work
 
+- Build MCP-created HIP and HDA deliverables with standard Houdini operators, parameters, and wiring. Use `scene_save`, Batch `hip_output`, and `hda_publish` so the network is checked before writing.
+- When an existing scene uses Wrangles, VEX expressions, Inline Code, or Python operators, use inspection to identify their behavior. Reuse compatible nodes or use standard nodes to replace them. In Batch, use `batch_edit_network` to complete the replacement and cook before saving. Obtain direction for topology changes outside the task.
 - Use the current session's hip file and inspect the targeted node or subtree before editing. For an existing-node tuning request, preserve node paths, topology, and connections by default; change only requested fields and capture relevant before/after state.
-- `houdini-iterate` includes a node snapshot helper for raw parameter values, unexpanded strings, expressions, keyframes, and wiring. It does not evaluate, cook, or mutate. Verify snapshots against the live scene before resuming older work notes.
+- Use the standard `node_snapshot` tool for raw parameter values, unexpanded strings, expressions, keyframes, and wiring. Compare against the live scene before resuming older work notes.
 - `houdini-scene-doctor` is for bounded diagnosis. It does not mutate or cook by default; its optional geometry report may cook when explicitly requested.
 - Prefer creating nodes only when the task calls for new topology. Discover available node types and inspect parameter templates before using them.
 - Use Batch for repeatable, GUI-independent operations. Each request runs in a fresh hython process; pass the previous returned `hip_output` as the next request's `hip_input`. Use GUI when the task depends on an open interactive scene or UI state.
 - Save hip files and HDA libraries to the requested destination, or to a sensible project-local destination when output is part of the task. Do not overwrite existing files without explicit intent.
-- Enable `--allow-python` only when a requested workflow needs the `execute_python` tool. The flag does not sandbox code.
+- Enable `--allow-python` only when a requested workflow needs the `execute_python` tool. The GUI bootstrap must also opt in. Keep artifact creation and saving on the validated MCP paths.
 
 ## Skills
 
 Choose the task-specific Houdini skill when it is available in the active client's project skills directory:
 
 - `houdini-scene-doctor`: read-only structural and diagnostic inspection.
-- `houdini-vex-workbench`: VEX wrangle authoring and attribute validation.
+- `houdini-vex-workbench`: diagnosis of existing VEX nodes and standard-node replacements.
 - `houdini-cop-workbench`: COP/Copernicus image-network inspection and tuning.
 - `houdini-hda-publisher`: publishing a selected network as a new HDA library.
 - `houdini-iterate`: minimal changes to existing work, verification, and project decision records.

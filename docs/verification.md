@@ -1,14 +1,32 @@
 # 検証記録
 
+## 2026-11-20 の確認
+
+- Windows の Houdini 21.0.631 と 22.0.368 の hython で各 **39 passed**。参照・式・キーの保護、明示的な置き換え後も参照先が変わらないこと、未評価スナップショットを確認。
+- 両バージョンの Houdini Core GUI で、新しいトークン認証、接続先の情報、Python 無効時の拒否、2 クライアントでの操作、メインスレッドでの実行、HIP 保存を確認。
+- Wrangle と Python SOP のある既存シーンで保存・公開を拒否し、使用可能な SOP 候補を返すことを確認。Attribute Create への置き換えを Batch で実行し、元 HIP を維持したまま、8 点の `pscale` が 0.2 の新しい HIP を保存した。
+- Houdini Core 22.0.368 の GUI で出力フラグの変更と標準ノードからの HDA 公開を確認。stdio の起動ログと `connection_status` で同じ HIP、セッション ID、未保存状態を受信した。
+- GUI の認証で共有トークンの非送信、改変・期限切れ・再送の拒否、未署名の応答の拒否を確認。Houdini Core 22.0.368 と stdio MCP で新しい認証方式の疎通を確認。検証環境の pip を 26.3 に更新後、`pip-audit` で監査可能な公開パッケージに既知の脆弱性は検出されなかった。
+- wheel を展開した環境から stdio MCP を起動し、[使用方法の Batch 作例](usage.md#batch-で-sop-ネットワークを作成検証保存する)を実行。各ステップの `hip_output` を引き継いで接続・cook・HIP 保存・HDA 公開を確認。MCP SDK 1.21.1 と 1.30.0 で `isError: true` と JSON 詳細を受信した。
+
+### 同日の旧 GUI 接続での確認
+
+- Windows の Python 3.12.14 と MCP 1.30.0 で、Houdini 21.0.631 と 22.0.368 の hython を使って個別にテストを実行し、いずれも **31 passed**。
+- Houdini Core 22.0.368 のテスト専用 GUI で、2 クライアントから同時に要求を送り、応答が混ざらないことと、HOM の呼び出しがメインスレッドで実行されることを確認。ノードの作成と検査、HIP の保存も成功。
+- 両バージョン同梱の RPyC 4.1.0 と、MCP 側の RPyC 5.3.1 の組み合わせで通信を確認。
+- wheel を生成し、配布物にブリッジの Python モジュールと起動コマンドの定義が含まれることを確認。
+
+## 2026-11-05 の確認
+
 2026-11-05、Windows のローカル作業コピーで実施しました。
 
-## 実行環境
+### 実行環境
 
 - MCP 側: Python 3.12.11、mcp 1.30.0、RPyC 4.1.0
 - Houdini 側: Houdini 22.0.368、付属 hython / Python 3.13.10
 - 参考リポジトリ: [fxhoudinimcp](https://github.com/healkeiser/fxhoudinimcp)、調査時コミット `bbee6b82691d91cfc3c295387847e82404d8b5b8`
 
-## 確認できたこと
+### 確認できたこと
 
 `.venv/Scripts/python.exe -m pytest -q` は **13 passed in 54.15s** でした。
 
@@ -25,7 +43,7 @@ Skill の SOP / VEX / HDA 作例も一時的な Houdini 設定・出力先で実
 
 `skill-creator` の `quick_validate.py`、サンプル JSON の読み込み、wheel のビルドも成功しています。wheel はリポジトリ外の一時フォルダーへ生成しました。
 
-## 未検証の範囲
+### 当時の未検証範囲
 
 - 起動中の Houdini GUI での操作、メインスレッドへの実際のディスパッチ、Undo、未保存シーンの保護
 - Houdini 22.0.368 以外のバージョン、別 OS
@@ -35,7 +53,7 @@ GUI のタイムアウトは Houdini 内の処理を取り消しません。失�
 
 初回検証時にはクライアント設定の変更は行いませんでした。追加整備後のプロジェクト内配置については以下を参照してください。
 
-## 追加 Skill とクライアント連携の検証
+### 追加 Skill とクライアント連携の検証
 
 同日、次の5つを追加し、既存の `houdini-procedural` と合わせて6つの Skill にしました。
 

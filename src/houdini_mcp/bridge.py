@@ -5,26 +5,21 @@ import subprocess
 import tempfile
 import threading
 
+from .gui import DEFAULT_PORT, HOST, GuiConnection, failure, gui_token_path, read_token
+
 HERE = Path(__file__).parent
 
 
-def failure(kind, message):
-    return {"ok": False, "error": {"type": kind, "message": str(message)}}
-
-
 class Bridge:
-    def __init__(self, backend, hython=None, port=18811, timeout=60, allow_python=False):
+    def __init__(self, backend, hython=None, port=DEFAULT_PORT, timeout=60, allow_python=False, gui_token_file=None):
         self.backend, self.hython, self.port = backend, hython, port
         self.timeout, self.allow_python = timeout, allow_python
+        self.gui_token_file = Path(gui_token_file) if gui_token_file is not None else gui_token_path(port)
         self.connection = None
         self.lock = threading.RLock()
 
     def close(self):
-        if self.connection:
-            try:
-                self.connection.close()
-            except Exception:
-                pass
+        with self.lock:
             self.connection = None
 
     def reconnect(self):
@@ -35,17 +30,26 @@ class Bridge:
                     return failure("ConfigurationError", "hython executable not found")
                 return {"ok": True, "result": {"backend": "batch", "hython": self.hython}}
             try:
-                import rpyc
-                self.connection = rpyc.classic.connect("127.0.0.1", self.port)
-                self.connection._config.update({"sync_request_timeout": self.timeout})
-                # Houdini's hdefereval explicitly accepts calls from any thread
-                # and schedules the callable on the main UI event loop.
-                source = (HERE / "dispatcher.py").read_text(encoding="utf-8-sig")
-                bootstrap = "import hou, json, hdefereval\nassert hou.isUIAvailable(), 'GUI backend requires Houdini UI'\n_hm_scope = {}\nexec(_hm_source, _hm_scope)"
-                self.connection.execute("_hm_source = " + repr(source) + "\n" + bootstrap)
-                return {"ok": True, "result": {"backend": "gui", "host": "127.0.0.1", "port": self.port}}
+                token = read_token(self.gui_token_file)
+                connection = GuiConnection(self.port, token, self.timeout)
+                reply = connection.call({"op": "status", "args": {}})
+                if not reply["ok"]:
+                    return reply
+                status = reply["result"]
+                session_id = status.get("session_id")
+                if (
+                    status.get("ui_available") is not True
+                    or not isinstance(session_id, str) or not session_id
+                    or not isinstance(status.get("hip_file"), str)
+                    or type(status.get("unsaved_changes")) is not bool
+                ):
+                    return failure("ConnectionError", "Endpoint did not identify a Houdini GUI session")
+                connection.session_id = session_id
+                self.connection = connection
+                return {"ok": True, "result": {**status, "backend": "gui", "host": HOST, "port": self.port}}
+            except FileNotFoundError:
+                return failure("ConfigurationError", f"Start the Houdini GUI bootstrap to create {self.gui_token_file}")
             except Exception as exc:
-                self.close()
                 return failure(type(exc).__name__, exc)
 
     def call(self, op, args=None, hip_input=None, hip_output=None, overwrite=False):
@@ -61,8 +65,10 @@ class Bridge:
             if self.connection is None:
                 return failure("ConnectionError", "Not connected; call reconnect")
             try:
-                expression = "json.dumps(hdefereval.executeInMainThreadWithResult(_hm_scope['dispatch'], json.loads(%r)), ensure_ascii=False, default=str)" % json.dumps(payload, ensure_ascii=False)
-                return json.loads(str(self.connection.eval(expression)))
+                result = self.connection.call(payload)
+                if not result["ok"] and result["error"]["type"] in ("SessionMismatchError", "AuthenticationError"):
+                    self.close()
+                return result
             except Exception as exc:
                 self.close()
                 return failure(type(exc).__name__, str(exc) + "; operation outcome may be unknown and it may still complete")

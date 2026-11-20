@@ -22,9 +22,13 @@ py -m pytest
 - Batch 要求が別々の hython プロセスで実行され、`hip_input` を読み込む。
 - `hip_output` 未指定では入力 hip を変更せず、指定時は新しい出力へ保存する。
 - 既存の hip 出力先は `overwrite: true` がない限り保護される。
-- GUI は `scripts/start_gui_loopback.py` から接続し、RPC ポートが `127.0.0.1` のみに bind する。
+- Wrangle、Python ノードなどを含むネットワークの HIP 保存と HDA 公開は拒否される。標準ノードのネットワークは `hda_publish` で公開できる。
+- `batch_edit_network` で代替ノードを作成または再利用し、配線・表示フラグを設定できる。cook ステップに失敗した場合は保存を中止する。
+- GUI は `scripts/start_gui_loopback.py` から接続し、ポートは `127.0.0.1` のみに bind する。無効なトークン、未定義の操作、別セッションへの変更は拒否される。
+- GUI の `reconnect` と `connection_status` は、HIP パス、未保存状態、セッション ID を返す。
 - `scene_load` は GUI の未保存変更がある場合に既定で拒否し、`discard_changes: true` のときだけ置換する。
-- `--allow-python` がない場合、Python 実行要求が拒否される。
+- `--allow-python` を指定した場合にだけ、MCP のツール一覧に `execute_python` が表示される。
+- `node_snapshot` は `--allow-python` なしで値・式・キー・配線を未評価のまま返す。保護された項目の編集は参照先も含めて報告し、MCP の `isError` が `true` になる。
 - 存在しないノード、無効なパラメータ、cook エラーが構造化されたエラー情報になる。
 - GUI 処理がタイムアウトしたとき、その実処理がキャンセルされたとは扱わず、状態を照会する。
 
